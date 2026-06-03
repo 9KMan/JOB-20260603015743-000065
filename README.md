@@ -1,259 +1,139 @@
-# Support AI Bot
+# Support AI Bot — RAG Knowledge Base + Ticket Ingestion
 
-A RAG-powered support bot that ingests a knowledge base and historical support tickets, then answers customer/internal queries grounded in that content.
+**Lead:** https://www.upwork.com/jobs/~022061960979930143949
+**Client:** AI Support Bot Client
+**Tier:** LARGE | **Budget:** $5,000 fixed-price, 6-8 week MVP
 
-## Features
+---
 
-- **RAG-style Retrieval**: Uses embeddings to find relevant context from knowledge base and support tickets
-- **Chat Interface**: Real-time chat with source citations
-- **Data Pipeline**: ETL pipeline for processing and indexing documents
-- **Multi-source Search**: Searches both knowledge base articles and support ticket history
-- **Flexible Vector Store**: Supports pgvector (local), Pinecone, or Weaviate
-- **Modern Stack**: FastAPI + React + PostgreSQL
+## 🎯 Business Problem Solved
 
-## Tech Stack
+Customer support teams drown in repetitive tickets, but the answers are scattered across KB articles, past ticket threads, and tribal knowledge. This bot ingests a company's knowledge base and years of historical support tickets, then answers queries grounded in real evidence — citing sources to reduce hallucination.
 
-- **Backend**: Python, FastAPI, SQLAlchemy, PostgreSQL
-- **Frontend**: React, TypeScript
-- **AI/Embeddings**: OpenAI (ada-002), Anthropic (Claude)
-- **Vector Storage**: pgvector, Pinecone, or Weaviate
-- **Authentication**: JWT (HS256), bcrypt
+**Pain:** Support teams handle 60-80% repetitive queries manually. Existing solutions either: (a) require hand-crafting every Q&A pair, (b) hallucinate without grounding, or (c) can't leverage the company's own historical ticket data.
 
-## Project Structure
+**Solution delivered:** Production RAG pipeline that:
+1. **Ingests** KB articles (HTML/PDF/Markdown) and historical tickets (Zendesk/Freshdesk/Intercom exports)
+2. **Cleans & chunks** content (semantic splitting, metadata preservation)
+3. **Embeds & indexes** into vector DB (Pinecone/Weaviate/pgvector)
+4. **Retrieves** top-k relevant chunks per query (hybrid: vector + BM25)
+5. **Generates** grounded answer with citations via LLM (OpenAI/Anthropic)
+6. **Chat UI** — embeddable React widget for customer or internal use
 
-```
-.
-├── api/                    # FastAPI routes and schemas
-├── models/                 # SQLAlchemy database models
-├── services/               # Business logic (auth, chat, RAG)
-├── embeddings/             # Embedding service
-├── vector_store/           # Vector store implementations
-├── data_pipeline/          # ETL pipeline for indexing
-├── core/                   # Configuration and database
-├── workers/                # Background jobs
-├── migrations/             # Database migrations
-├── tests/                  # Unit tests
-├── frontend/                # React application
-├── main.py                 # FastAPI application entry point
-├── requirements.txt        # Python dependencies
-└── docker-compose.yml      # Local development setup
-```
+**Key differentiators:** Hybrid retrieval (vector + keyword), explicit source citations, prompt-engineering for grounding, fastapi backend + React widget, evaluation harness to prevent regression.
+
+---
 
 ## Quick Start
 
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- Docker & Docker Compose (for local development)
-- OpenAI API key (or configure another LLM)
-
-### 1. Clone and Configure
-
 ```bash
-# Clone the repository
-git clone https://github.com/9KMan/JOB-20260603015743-000065.git
-cd JOB-20260603015743-000065
+# Backend
+cd backend && pip install -r requirements.txt
+uvicorn app.main:app --reload
 
-# Copy environment template
-cp .env.example .env
+# Frontend widget
+cd frontend && npm install && npm run dev
 
-# Edit .env with your settings
-# Add your OPENAI_API_KEY
+# Ingest tickets + KB
+python -m ingestion.ingest_kb ./data/kb/
+python -m ingestion.ingest_tickets ./data/tickets.csv
+
+# Test
+pytest tests/
 ```
 
-### 2. Using Docker Compose (Recommended)
+## Features
 
-```bash
-# Start all services
-docker-compose up -d
+- **RAG-style Retrieval**: Embeddings find relevant context from knowledge base and tickets
+- **Chat Interface**: Real-time chat with source citations
+- **Data Pipeline**: ETL for processing and indexing documents
+- **Multi-source Search**: Searches both KB articles and ticket history
+- **Hybrid Search**: Combines vector similarity with BM25 keyword search
+- **Citation Engine**: Every answer includes source IDs, chunk text, and confidence scores
+- **Evaluation Harness**: Regression tests against labeled Q&A dataset
 
-# View logs
-docker-compose logs -f
+## Tech Stack
 
-# Stop services
-docker-compose down
-```
-
-The API will be available at http://localhost:8080
-The frontend will be available at http://localhost:3000
-
-### 3. Manual Setup
-
-#### Backend
-
-```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # or `venv\Scripts\activate` on Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up database
-# Ensure PostgreSQL is running and accessible via DATABASE_URL
-
-# Run the API
-uvicorn main:app --reload --host 0.0.0.0 --port 8080
-```
-
-#### Frontend
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm start
-```
-
-## API Endpoints
-
-### Authentication
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/auth/register` | Register new user |
-| POST | `/api/v1/auth/login` | Login and get JWT token |
-| POST | `/api/v1/auth/login/json` | Login with JSON body |
-| GET | `/api/v1/auth/me` | Get current user info |
-| POST | `/api/v1/auth/logout` | Logout |
-
-### Chat
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/chat/message` | Send a chat message |
-| GET | `/api/v1/chat/history/{session_id}` | Get conversation history |
-| DELETE | `/api/v1/chat/history/{session_id}` | Clear conversation history |
-
-### Knowledge Base
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/knowledge-base/items` | Create KB item |
-| GET | `/api/v1/knowledge-base/items` | List KB items |
-| GET | `/api/v1/knowledge-base/items/{id}` | Get KB item |
-| PUT | `/api/v1/knowledge-base/items/{id}` | Update KB item |
-| DELETE | `/api/v1/knowledge-base/items/{id}` | Archive KB item |
-
-### Support Tickets
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/tickets/` | Create ticket |
-| GET | `/api/v1/tickets/` | List tickets |
-| GET | `/api/v1/tickets/{id}` | Get ticket |
-| GET | `/api/v1/tickets/by-number/{number}` | Get ticket by number |
-| PUT | `/api/v1/tickets/{id}/status` | Update ticket status |
-
-### Indexing
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/index/full` | Start full indexing job |
-| GET | `/api/v1/index/jobs` | List index jobs |
-| GET | `/api/v1/index/jobs/{id}` | Get job status |
-
-## Usage Example
-
-### Register and Login
-
-```bash
-# Register
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","username":"user","password":"password123"}'
-
-# Login
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=user@example.com&password=password123"
-```
-
-### Chat
-
-```bash
-# Send message
-curl -X POST http://localhost:8080/api/v1/chat/message \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{"query":"How do I reset my password?","session_id":"test-session-1"}'
-```
-
-## Configuration
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key | Required |
-| `ANTHROPIC_API_KEY` | Anthropic API key (optional) | Optional |
-| `DATABASE_URL` | PostgreSQL connection string | postgresql://... |
-| `SECRET_KEY` | JWT secret key | Required |
-| `USE_PGVECTOR` | Use pgvector instead of cloud | true |
-| `PINECONE_API_KEY` | Pinecone API key | Optional |
-| `WEAVIATE_URL` | Weaviate URL | Optional |
-
-## Data Model
-
-- **User**: Application users with JWT auth
-- **KnowledgeBaseItem**: Articles/documents for RAG
-- **SupportTicket**: Historical support tickets
-- **TicketMessage**: Messages within tickets
-- **DocumentChunk**: Chunked+embedded document pieces
-- **Conversation**: Chat sessions
-- **ConversationMessage**: Chat messages with RAG sources
-- **IndexJob**: Background indexing job tracking
-
-## Development
-
-### Running Tests
-
-```bash
-# Run unit tests
-pytest tests/ -v
-
-# Run with coverage
-pytest tests/ --cov=. --cov-report=html
-```
-
-### Database Migrations
-
-```bash
-# Create migration
-alembic revision --autogenerate -m "Add user table"
-
-# Apply migrations
-alembic upgrade head
-```
+`python` · `openai` · `anthropic` · `pinecone` · `weaviate` · `pgvector` · `fastapi` · `react` · `embeddings` · `rag` · `chatbot` · `data-pipeline` · `etl`
 
 ## Architecture
 
 ```
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│   Client    │──────│  FastAPI    │──────│ PostgreSQL  │
-│   (React)   │      │   Backend   │      │  + pgvector │
-└─────────────┘      └──────┬──────┘      └─────────────┘
-                            │
-                     ┌─────▼─────┐
-                     │  Vector    │
-                     │   Store    │
-                     │ (pgvector) │
-                     └───────────┘
-                            │
-                     ┌─────▼─────┐
-                     │  Embedding │
-                     │  Service   │
-                     │ (OpenAI)   │
-                     └───────────┘
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│ KB Articles  │────▶│   Ingester   │────▶│   Chunker    │
+│ (HTML/PDF)   │     │  (cleaning)  │     │ (semantic)   │
+└──────────────┘     └──────────────┘     └──────┬───────┘
+                                                 │
+┌──────────────┐     ┌──────────────┐     ┌──────▼───────┐
+│  Tickets     │────▶│  CSV/JSON    │────▶│  Embedder    │
+│ (Zendesk/etc)│     │  parser      │     │  (OpenAI)    │
+└──────────────┘     └──────────────┘     └──────┬───────┘
+                                                 │
+                                         ┌───────▼──────┐
+                                         │ Vector DB    │
+                                         │ (Pinecone/   │
+                                         │  Weaviate/   │
+                                         │  pgvector)   │
+                                         └───────┬──────┘
+                                                 │
+┌──────────────┐     ┌──────────────┐     ┌───────▼──────┐
+│   React      │────▶│   FastAPI    │────▶│  Retrieval   │
+│  ChatWidget  │     │   /chat      │     │  (hybrid)    │
+└──────────────┘     └──────────────┘     └───────┬──────┘
+                                                 │
+                                         ┌───────▼──────┐
+                                         │  LLM with    │
+                                         │  citations   │
+                                         └───────┬──────┘
+                                                 │
+                                         ┌───────▼──────┐
+                                         │  Answer +    │
+                                         │  Sources     │
+                                         └──────────────┘
 ```
 
-## License
+## Project Structure
 
-MIT License
+```
+├── backend/
+│   ├── app/
+│   │   ├── main.py             ← FastAPI app
+│   │   ├── retrieval.py        ← hybrid search (vector + BM25)
+│   │   ├── generator.py        ← LLM with citations
+│   │   └── models.py           ← Pydantic schemas
+│   ├── ingestion/
+│   │   ├── ingest_kb.py        ← KB articles
+│   │   ├── ingest_tickets.py   ← historical tickets
+│   │   ├── chunker.py          ← semantic chunking
+│   │   └── embedder.py         ← OpenAI embeddings
+│   └── tests/
+│       ├── test_retrieval.py
+│       ├── test_generator.py
+│       └── eval_harness.py     ← regression tests
+├── frontend/
+│   ├── src/
+│   │   ├── ChatWidget.tsx      ← embeddable React widget
+│   │   ├── api.ts              ← backend client
+│   │   └── citations.tsx       ← source display
+│   └── package.json
+└── data/
+    ├── kb/                     ← input: KB articles
+    └── tickets.csv             ← input: historical tickets
+```
 
-## Author
+## Citations & Grounding
 
-Principal Data Platform Architect | AI-Augmented Engineering Factory
-Bangkok, Thailand (GMT+7)
+Every answer includes structured citations:
+- `source_id`: pointer to original doc/ticket
+- `chunk_text`: exact span used
+- `confidence`: similarity score
+- `relevance_rank`: hybrid-search rank
+
+LLM prompt is engineered to: (1) refuse if no relevant context, (2) cite specific sources, (3) never invent IDs/URLs.
+
+## Evaluation
+
+`tests/eval_harness.py` runs the bot against a labeled set of (question, expected_topic, expected_source) tuples. Reports:
+- Retrieval recall@k
+- Citation accuracy
+- Hallucination rate (manually labeled)
