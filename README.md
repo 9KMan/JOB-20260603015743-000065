@@ -1,6 +1,5 @@
 # Support AI Bot — RAG Knowledge Base + Ticket Ingestion
 
-**Lead:** https://www.upwork.com/jobs/~022061960979930143949
 **Client:** AI Support Bot Client
 **Tier:** LARGE | **Budget:** $5,000 fixed-price, 6-8 week MVP
 
